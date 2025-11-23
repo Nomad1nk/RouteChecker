@@ -1,45 +1,113 @@
-"use client"; 
+"use client";
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Map as MapIcon, Zap, Route, Plus, Trash2, Loader, CheckCircle, Truck } from 'lucide-react';
+import { Map as MapIcon, Zap, Route, Plus, Trash2, Loader, CheckCircle, Truck, Globe } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import the Map component to avoid Server-Side Rendering issues
-const MapComponent = dynamic(() => import('../components/Map'), { 
-  ssr: false,
-  loading: () => <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400">Loading Map...</div>
+const MapComponent = dynamic(() => import('../components/Map'), {
+    ssr: false,
+    loading: () => <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400">Loading Map...</div>
 });
+
+// --- I18N CONFIGURATION ---
+type Language = 'en' | 'de' | 'jp';
+
+const translations = {
+    en: {
+        title: "EcoRoute Optimizer",
+        subtitle: "Sustainable Logistics & Carbon Footprint Reduction Platform",
+        routeParams: "Route Parameters",
+        origin: "Origin",
+        destination: "Destination",
+        stop: "Stop",
+        addStop: "Add Delivery Stop",
+        optimize: "Optimize Route",
+        calculating: "Calculating...",
+        success: "Optimization Success",
+        distanceSaved: "Distance Saved",
+        carbonReduction: "CO₂ Reduction",
+        totalDistance: "Total Distance",
+        carbonFootprint: "Carbon Footprint",
+        connectionError: "Connection Error",
+        engineUnavailable: "Optimization Engine unavailable. Ensure Rails (3000) and Python (5001) are running.",
+        startLocation: "Start Location",
+        endLocation: "End Location",
+        stopPlaceholder: "Stop Location"
+    },
+    de: {
+        title: "EcoRoute Optimierer",
+        subtitle: "Plattform für nachhaltige Logistik & CO₂-Reduktion",
+        routeParams: "Routenparameter",
+        origin: "Startpunkt",
+        destination: "Zielort",
+        stop: "Zwischenstopp",
+        addStop: "Lieferstopp hinzufügen",
+        optimize: "Route optimieren",
+        calculating: "Berechnung...",
+        success: "Optimierung erfolgreich",
+        distanceSaved: "Distanz gespart",
+        carbonReduction: "CO₂-Reduktion",
+        totalDistance: "Gesamtdistanz",
+        carbonFootprint: "CO₂-Fußabdruck",
+        connectionError: "Verbindungsfehler",
+        engineUnavailable: "Optimierungs-Engine nicht verfügbar. Stellen Sie sicher, dass Rails (3000) und Python (5001) laufen.",
+        startLocation: "Startadresse",
+        endLocation: "Zieladresse",
+        stopPlaceholder: "Stoppadresse"
+    },
+    jp: {
+        title: "EcoRoute オプティマイザー",
+        subtitle: "持続可能な物流と二酸化炭素排出削減プラットフォーム",
+        routeParams: "ルートパラメータ",
+        origin: "出発地",
+        destination: "目的地",
+        stop: "経由地",
+        addStop: "配送先を追加",
+        optimize: "ルート最適化",
+        calculating: "計算中...",
+        success: "最適化完了",
+        distanceSaved: "短縮距離",
+        carbonReduction: "CO₂削減量",
+        totalDistance: "総距離",
+        carbonFootprint: "二酸化炭素排出量",
+        connectionError: "接続エラー",
+        engineUnavailable: "最適化エンジンが利用できません。Rails (3000) と Python (5001) が実行されていることを確認してください。",
+        startLocation: "出発地を入力",
+        endLocation: "目的地を入力",
+        stopPlaceholder: "経由地を入力"
+    }
+};
 
 // --- DATA INTERFACES ---
 
 interface RouteData {
-  original: { distance_km: number; carbon_kg: number; coordinates: [number, number][] };
-  optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][] };
-  savings: { distance_percent: number; carbon_percent: number };
+    original: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
+    optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
+    savings: { distance_percent: number; carbon_percent: number };
 }
 
 interface MetricCardProps {
-  value: string | number;
-  label: string;
-  unit: string;
-  color: string;
+    value: string | number;
+    label: string;
+    unit: string;
+    color: string;
 }
 
 interface RouteInputProps {
-  label: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder: string;
-  icon: React.ElementType;
-  isReadonly?: boolean;
+    label: string;
+    value: string;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    placeholder: string;
+    icon: React.ElementType;
+    isReadonly?: boolean;
 }
 
 // --- COMPONENTS ---
 
 const RouteInput = React.memo(({ label, value, onChange, placeholder, icon: Icon, isReadonly = false }: RouteInputProps) => (
     <div className="flex items-center space-x-3 p-3 bg-white/70 backdrop-blur-sm rounded-xl shadow-md transition duration-300 hover:shadow-lg">
-        {/* FIXED: Cleaned up the className string to ensure no syntax errors */}
-        <Icon className="w-5 h-5 text-emerald-600 flex-shrink-0;" />
+        <Icon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
         <input
             type="text"
             value={value}
@@ -63,6 +131,9 @@ const MetricCard = ({ value, label, unit, color }: MetricCardProps) => (
 // --- MAIN PAGE ---
 
 export default function Home() {
+    const [language, setLanguage] = useState<Language>('en');
+    const t = translations[language];
+
     const [origin, setOrigin] = useState('Okuizumo-cho Logistics Point');
     const [destination, setDestination] = useState('Osaka International Cargo Port');
     const [stops, setStops] = useState(['Matsue Distribution Center', 'Hiroshima Transit Hub']);
@@ -71,7 +142,7 @@ export default function Home() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const addStop = useCallback(() => { if (stops.length < 5) setStops(prev => [...prev, '']); }, [stops.length]);
-    
+
     const updateStop = useCallback((index: number, newAddress: string) => { setStops(prev => prev.map((item, i) => (i === index ? newAddress : item))); }, []);
     const removeStop = useCallback((index: number) => { setStops(prev => prev.filter((_, i) => i !== index)); }, []);
 
@@ -81,7 +152,7 @@ export default function Home() {
         setErrorMsg(null);
 
         try {
-            const response = await fetch('http://127.0.0.1:3000/api/v1/routes/optimize', {
+            const response = await fetch('http://localhost:3000/api/v1/routes/optimize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ origin, destination, stops })
@@ -94,11 +165,11 @@ export default function Home() {
 
         } catch (error) {
             console.error('Optimization failed:', error);
-            setErrorMsg('Optimization Engine unavailable. Ensure Rails (3000) and Python (5001) are running.');
+            setErrorMsg(t.engineUnavailable);
         } finally {
             setIsLoading(false);
         }
-    }, [origin, destination, stops]);
+    }, [origin, destination, stops, t.engineUnavailable]);
 
     const isRouteValid = useMemo(() => {
         const requiredFields = [origin, destination];
@@ -113,13 +184,19 @@ export default function Home() {
                 .hover\\:bg-emerald-700:hover { background-color: #047857; }
                 .shadow-emerald { box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2), 0 4px 6px -2px rgba(16, 185, 129, 0.05); }
             `}</style>
-            
-            <header className="mb-8 text-center">
+
+            <header className="mb-8 text-center relative">
+                <div className="absolute right-0 top-0 flex space-x-2">
+                    <button onClick={() => setLanguage('en')} className={`px-3 py-1 rounded-lg font-bold transition ${language === 'en' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>🇬🇧 EN</button>
+                    <button onClick={() => setLanguage('de')} className={`px-3 py-1 rounded-lg font-bold transition ${language === 'de' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>🇩🇪 DE</button>
+                    <button onClick={() => setLanguage('jp')} className={`px-3 py-1 rounded-lg font-bold transition ${language === 'jp' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>🇯🇵 JP</button>
+                </div>
+
                 <h1 className="text-4xl font-extrabold text-gray-800 flex items-center justify-center space-x-3">
                     <Truck className="w-10 h-10 text-emerald-600" />
-                    <span>EcoRoute Optimizer</span>
+                    <span>{t.title}</span>
                 </h1>
-                <p className="text-gray-500 mt-2">Sustainable Logistics & Carbon Footprint Reduction Platform</p>
+                <p className="text-gray-500 mt-2">{t.subtitle}</p>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
@@ -127,48 +204,48 @@ export default function Home() {
                 <div className="lg:col-span-1 p-6 bg-white rounded-2xl shadow-2xl h-fit sticky top-8 border-t-4 border-emerald-500">
                     <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3 flex items-center space-x-2">
                         <Route className="w-6 h-6 text-emerald-600" />
-                        <span>Route Parameters</span>
+                        <span>{t.routeParams}</span>
                     </h2>
 
                     <div className="space-y-4">
-                        <RouteInput 
-                            label="Origin" 
-                            value={origin} 
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrigin(e.target.value)} 
-                            placeholder="Start Location" 
-                            icon={MapIcon} 
+                        <RouteInput
+                            label={t.origin}
+                            value={origin}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrigin(e.target.value)}
+                            placeholder={t.startLocation}
+                            icon={MapIcon}
                         />
-                        
+
                         {stops.map((stop, index) => (
                             <div key={index} className="flex items-center space-x-2">
-                                <RouteInput 
-                                    label={`Stop ${index + 1}`} 
-                                    value={stop} 
-                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStop(index, e.target.value)} 
-                                    placeholder={`Stop ${index + 1}`} 
-                                    icon={Route} 
+                                <RouteInput
+                                    label={`${t.stop} ${index + 1}`}
+                                    value={stop}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStop(index, e.target.value)}
+                                    placeholder={`${t.stopPlaceholder} ${index + 1}`}
+                                    icon={Route}
                                 />
                                 <button onClick={() => removeStop(index)} className="p-2 text-red-400 hover:text-red-600"><Trash2 className="w-5 h-5" /></button>
                             </div>
                         ))}
-                        
+
                         {stops.length < 5 && (
                             <button onClick={addStop} className="flex items-center space-x-2 text-emerald-600 font-semibold text-sm ml-1">
-                                <Plus className="w-4 h-4" /><span>Add Delivery Stop</span>
+                                <Plus className="w-4 h-4" /><span>{t.addStop}</span>
                             </button>
                         )}
-                        
-                        <RouteInput 
-                            label="Destination" 
-                            value={destination} 
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDestination(e.target.value)} 
-                            placeholder="End Location" 
-                            icon={MapIcon} 
+
+                        <RouteInput
+                            label={t.destination}
+                            value={destination}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDestination(e.target.value)}
+                            placeholder={t.endLocation}
+                            icon={MapIcon}
                         />
                     </div>
 
                     <button onClick={optimizeRoute} disabled={isLoading || !isRouteValid} className={`mt-6 w-full py-3 rounded-xl text-white font-bold text-lg flex items-center justify-center space-x-2 transition duration-300 ${isRouteValid && !isLoading ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald transform hover:-translate-y-1' : 'bg-gray-300 cursor-not-allowed'}`}>
-                        {isLoading ? <><Loader className="w-5 h-5 animate-spin" /><span>Calculating...</span></> : <><Zap className="w-5 h-5" /><span>Optimize Route</span></>}
+                        {isLoading ? <><Loader className="w-5 h-5 animate-spin" /><span>{t.calculating}</span></> : <><Zap className="w-5 h-5" /><span>{t.optimize}</span></>}
                     </button>
                 </div>
 
@@ -176,30 +253,32 @@ export default function Home() {
                 <div className="lg:col-span-2">
                     {/* REAL MAP VISUALIZATION */}
                     <div className="bg-white h-96 w-full rounded-2xl shadow-2xl mb-8 border-4 border-white overflow-hidden relative z-0">
-                         <MapComponent 
-                            originalCoords={optimizationMetrics?.original.coordinates} 
-                            optimizedCoords={optimizationMetrics?.optimized.coordinates} 
-                         />
+                        <MapComponent
+                            originalCoords={optimizationMetrics?.original.coordinates}
+                            optimizedCoords={optimizationMetrics?.optimized.coordinates}
+                            originalWaypoints={optimizationMetrics?.original.waypoints}
+                            optimizedWaypoints={optimizationMetrics?.optimized.waypoints}
+                        />
                     </div>
 
                     {errorMsg && (
-                         <div className="p-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-xl shadow-md">
-                            <p className="font-bold">Connection Error</p>
+                        <div className="p-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r-xl shadow-md">
+                            <p className="font-bold">{t.connectionError}</p>
                             <p>{errorMsg}</p>
-                         </div>
+                        </div>
                     )}
 
                     {optimizationMetrics && (
                         <div className="p-8 bg-white rounded-2xl shadow-2xl border-t-4 border-emerald-500 animation-fade-in">
                             <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3 flex items-center space-x-2">
                                 <CheckCircle className="w-6 h-6 text-emerald-500" />
-                                <span>Optimization Success</span>
+                                <span>{t.success}</span>
                             </h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                <MetricCard value={optimizationMetrics.savings.distance_percent} label="Distance Saved" unit="%" color="text-emerald-600" />
-                                <MetricCard value={optimizationMetrics.savings.carbon_percent} label="CO₂ Reduction" unit="%" color="text-emerald-600" />
-                                <MetricCard value={optimizationMetrics.optimized.distance_km} label="Total Distance" unit=" km" color="text-slate-700" />
-                                <MetricCard value={optimizationMetrics.optimized.carbon_kg} label="Carbon Footprint" unit=" kg" color="text-slate-700" />
+                                <MetricCard value={optimizationMetrics.savings.distance_percent} label={t.distanceSaved} unit="%" color="text-emerald-600" />
+                                <MetricCard value={optimizationMetrics.savings.carbon_percent} label={t.carbonReduction} unit="%" color="text-emerald-600" />
+                                <MetricCard value={optimizationMetrics.optimized.distance_km} label={t.totalDistance} unit=" km" color="text-slate-700" />
+                                <MetricCard value={optimizationMetrics.optimized.carbon_kg} label={t.carbonFootprint} unit=" kg" color="text-slate-700" />
                             </div>
                         </div>
                     )}

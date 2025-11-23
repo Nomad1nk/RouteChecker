@@ -1,7 +1,7 @@
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
     # Allow the Frontend (Port 3001) to talk to us
-    origins "http://localhost:3001"
+    origins "*"
 
     resource "*",
       headers: :any,
