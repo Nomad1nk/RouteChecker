@@ -4,13 +4,11 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Map as MapIcon, Zap, Route, Plus, Trash2, Loader, CheckCircle, Truck, Globe } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the Map component to avoid Server-Side Rendering issues
 const MapComponent = dynamic(() => import('../components/Map'), {
     ssr: false,
     loading: () => <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400">Loading Map...</div>
 });
 
-// --- I18N CONFIGURATION ---
 type Language = 'en' | 'de' | 'jp';
 
 const translations = {
@@ -79,8 +77,6 @@ const translations = {
     }
 };
 
-// --- DATA INTERFACES ---
-
 interface RouteData {
     original: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
     optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
@@ -102,8 +98,6 @@ interface RouteInputProps {
     icon: React.ElementType;
     isReadonly?: boolean;
 }
-
-// --- COMPONENTS ---
 
 const RouteInput = React.memo(({ label, value, onChange, placeholder, icon: Icon, isReadonly = false }: RouteInputProps) => (
     <div className="flex items-center space-x-3 p-3 bg-white/70 backdrop-blur-sm rounded-xl shadow-md transition duration-300 hover:shadow-lg">
@@ -127,8 +121,6 @@ const MetricCard = ({ value, label, unit, color }: MetricCardProps) => (
         <div className="text-sm text-gray-500 mt-1 uppercase tracking-wider">{label}</div>
     </div>
 );
-
-// --- MAIN PAGE ---
 
 export default function Home() {
     const [language, setLanguage] = useState<Language>('en');
@@ -200,7 +192,6 @@ export default function Home() {
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-                {/* Input Column */}
                 <div className="lg:col-span-1 p-6 bg-white rounded-2xl shadow-2xl h-fit sticky top-8 border-t-4 border-emerald-500">
                     <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3 flex items-center space-x-2">
                         <Route className="w-6 h-6 text-emerald-600" />
@@ -249,9 +240,7 @@ export default function Home() {
                     </button>
                 </div>
 
-                {/* Results Column */}
                 <div className="lg:col-span-2">
-                    {/* REAL MAP VISUALIZATION */}
                     <div className="bg-white h-96 w-full rounded-2xl shadow-2xl mb-8 border-4 border-white overflow-hidden relative z-0">
                         <MapComponent
                             originalCoords={optimizationMetrics?.original.coordinates}

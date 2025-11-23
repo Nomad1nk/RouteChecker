@@ -5,8 +5,6 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect } from "react";
 
-// Fix for missing Leaflet icons in Next.js
-// We check if window is defined to avoid SSR issues with Leaflet
 const icon = typeof window !== 'undefined' ? L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png",
@@ -22,7 +20,6 @@ interface MapProps {
   optimizedWaypoints?: [number, number][];
 }
 
-// Component to update map view when coordinates change
 function MapUpdater({ coords }: { coords?: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
@@ -40,10 +37,9 @@ export default function MapComponent({
   originalWaypoints,
   optimizedWaypoints
 }: MapProps) {
-  // Center roughly on Japan if no coords, or the first point
   const center: [number, number] = originalWaypoints && originalWaypoints.length > 0
     ? originalWaypoints[0]
-    : [35.6895, 139.6917]; // Tokyo fallback
+    : [35.6895, 139.6917];
 
   return (
     <MapContainer center={center} zoom={6} style={{ height: "100%", width: "100%", borderRadius: "1rem" }}>
@@ -52,10 +48,8 @@ export default function MapComponent({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {/* Auto-fit bounds to the optimized route */}
       <MapUpdater coords={optimizedCoords || originalCoords} />
 
-      {/* Draw Original Route (Red/Gray dashed) if exists */}
       {originalCoords && (
         <Polyline
           positions={originalCoords}
@@ -63,7 +57,6 @@ export default function MapComponent({
         />
       )}
 
-      {/* Draw Optimized Route (Green) if exists */}
       {optimizedCoords && (
         <Polyline
           positions={optimizedCoords}
@@ -71,7 +64,6 @@ export default function MapComponent({
         />
       )}
 
-      {/* Markers for the optimized stops */}
       {optimizedWaypoints && optimizedWaypoints.map((coord, idx) => (
         <Marker key={idx} position={coord} icon={icon}>
           <Popup>Stop #{idx + 1}</Popup>
