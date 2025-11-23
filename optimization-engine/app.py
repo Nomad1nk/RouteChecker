@@ -5,6 +5,7 @@ from itertools import permutations
 
 app = Flask(__name__)
 
+
 def haversine_distance(coord1, coord2):
     R = 6371
     lat1, lon1 = coord1
