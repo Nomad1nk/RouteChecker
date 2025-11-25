@@ -1,0 +1,11 @@
+Sending request to http://localhost:5001/optimize...
+Success!
+Optimized Metrics:
+  Distance: 13.19 km
+  Actual Road Distance: 13.19 km
+  Driving Time: 16.33 min
+  Traffic Delay Factor: 1.65
+  Carbon: 3.2 kg
+  Waypoints: [[35.6811505, 139.7659765], [35.6720425, 139.7636034], [35.6576868, 139.7002994], [35.6905828, 139.6991102]]
+
+[PASS] All required fields present.
