@@ -80,10 +80,10 @@ const translations = {
 
 interface RouteData {
     original: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
-    optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
+    optimized: { distance_km: number; carbon_kg: number; duration_min: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
     options?: {
-        fastest: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
-        eco?: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
+        fastest: { distance_km: number; carbon_kg: number; duration_min: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
+        eco?: { distance_km: number; carbon_kg: number; duration_min: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
     };
     savings: { distance_percent: number; carbon_percent: number };
 }
@@ -126,6 +126,13 @@ const MetricCard = ({ value, label, unit, color }: MetricCardProps) => (
         <div className="text-sm text-gray-500 mt-1 uppercase tracking-wider">{label}</div>
     </div>
 );
+
+const formatDuration = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    if (h === 0) return `${m} min`;
+    return `${h} hr ${m} min`;
+};
 
 export default function Home() {
     const [language, setLanguage] = useState<Language>('en');
@@ -299,10 +306,11 @@ export default function Home() {
                                 )}
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
                                 <MetricCard value={optimizationMetrics.savings.distance_percent} label={t.distanceSaved} unit="%" color="text-emerald-600" />
                                 <MetricCard value={optimizationMetrics.savings.carbon_percent} label={t.carbonReduction} unit="%" color="text-emerald-600" />
                                 <MetricCard value={currentMetrics.distance_km} label={t.totalDistance} unit=" km" color="text-slate-700" />
+                                <MetricCard value={formatDuration(currentMetrics.duration_min)} label="Total Duration" unit="" color="text-slate-700" />
                                 <MetricCard value={currentMetrics.carbon_kg} label={t.carbonFootprint} unit=" kg" color="text-slate-700" />
                             </div>
 
