@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Map as MapIcon, Zap, Route, Plus, Trash2, Loader, CheckCircle, Truck, Globe } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
+
 const MapComponent = dynamic(() => import('../components/Map'), {
     ssr: false,
     loading: () => <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400">Loading Map...</div>
