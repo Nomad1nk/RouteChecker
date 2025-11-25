@@ -144,39 +144,118 @@ def optimize_route():
                 coords = geocode_address(stop.get('address'))
                 stops[i]['coords'] = coords if coords else [35.0 + (i*0.1), 137.0 + (i*0.5)]
 
+        # --- ETA Calculation Helper ---
+        from datetime import datetime, timedelta
+        
+        start_time_str = data.get('start_time') # Expect ISO format or HH:MM
+        current_time = datetime.now()
+        if start_time_str:
+            try:
+                # Try parsing as full ISO
+                start_dt = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+            except:
+                try:
+                    # Try parsing as HH:MM for today
+                    t = datetime.strptime(start_time_str, "%H:%M").time()
+                    start_dt = datetime.combine(current_time.date(), t)
+                except:
+                    start_dt = current_time
+        else:
+            start_dt = current_time
+
+        def calculate_etas(waypoints, start_dt):
+            etas = []
+            current_dt = start_dt
+            etas.append({"address": "Origin", "time": current_dt.strftime("%H:%M")})
+            
+            for i in range(len(waypoints) - 1):
+                # Get duration for this segment
+                _, seg_duration, _ = get_osrm_route(waypoints[i], waypoints[i+1])
+                # Add driving time + 15 mins service time per stop (except last)
+                travel_time = timedelta(minutes=seg_duration)
+                service_time = timedelta(minutes=15) if i < len(waypoints) - 2 else timedelta(0)
+                
+                current_dt += travel_time + service_time
+                etas.append({"address": f"Stop {i+1}" if i < len(waypoints)-2 else "Destination", "time": current_dt.strftime("%H:%M")})
+            return etas
+
+        # --- Solve TSP for Multiple Objectives ---
+        # 1. Fastest (Min Duration)
+        # 2. Eco (Min Distance/CO2) - In our model, min distance = min CO2
+        
+        best_fastest_order = None
+        min_duration = float('inf')
+        
+        best_eco_order = None
+        min_distance = float('inf')
+
+        for perm in permutations(stops):
+            current_path_coords = [origin['coords']] + [s['coords'] for s in perm] + [destination['coords']]
+            current_dist, current_duration, _, _ = calculate_route_metrics(current_path_coords, use_osrm=True)
+            
+            if current_duration < min_duration:
+                min_duration = current_duration
+                best_fastest_order = perm
+            
+            if current_dist < min_distance:
+                min_distance = current_dist
+                best_eco_order = perm
+
+        # Construct Results
+        results = {}
+        
+        # Option 1: Fastest
+        fastest_path = [origin] + list(best_fastest_order) + [destination]
+        fastest_coords = [p['coords'] for p in fastest_path]
+        f_dist, f_dur, f_co2, f_geom = calculate_route_metrics(fastest_coords, use_osrm=True)
+        f_etas = calculate_etas(fastest_coords, start_dt)
+        
+        results['fastest'] = {
+            "label": "Fastest Route",
+            "distance_km": round(f_dist, 2),
+            "duration_min": round(f_dur, 2),
+            "carbon_kg": round(f_co2, 2),
+            "coordinates": f_geom,
+            "waypoints": fastest_coords,
+            "etas": f_etas
+        }
+
+        # Option 2: Eco (Only add if different from fastest)
+        if best_eco_order != best_fastest_order:
+            eco_path = [origin] + list(best_eco_order) + [destination]
+            eco_coords = [p['coords'] for p in eco_path]
+            e_dist, e_dur, e_co2, e_geom = calculate_route_metrics(eco_coords, use_osrm=True)
+            e_etas = calculate_etas(eco_coords, start_dt)
+            
+            results['eco'] = {
+                "label": "Eco-Friendly Route",
+                "distance_km": round(e_dist, 2),
+                "duration_min": round(e_dur, 2),
+                "carbon_kg": round(e_co2, 2),
+                "coordinates": e_geom,
+                "waypoints": eco_coords,
+                "etas": e_etas
+            }
+
+        # Original (No optimization)
         original_path = [origin] + stops + [destination]
         original_coords = [p['coords'] for p in original_path]
-        orig_dist, orig_duration, orig_carbon, orig_geom = calculate_route_metrics(original_coords, use_osrm=True)
-
-        optimized_path = solve_tsp_bruteforce(origin, destination, stops)
-        opt_coords = [p['coords'] for p in optimized_path]
-        opt_dist, opt_duration, opt_carbon, opt_geom = calculate_route_metrics(opt_coords, use_osrm=True)
-
-        ideal_duration_min = (opt_dist / 80) * 60
-        traffic_delay_factor = opt_duration / ideal_duration_min if ideal_duration_min > 0 else 1.0
-        if traffic_delay_factor < 1.0: traffic_delay_factor = 1.0
-
+        o_dist, o_dur, o_co2, o_geom = calculate_route_metrics(original_coords, use_osrm=True)
+        
         return jsonify({
             "original": { 
-                "distance_km": round(orig_dist, 2), 
-                "duration_min": round(orig_duration, 2),
-                "carbon_kg": round(orig_carbon, 2),
-                "coordinates": orig_geom,
+                "distance_km": round(o_dist, 2), 
+                "duration_min": round(o_dur, 2),
+                "carbon_kg": round(o_co2, 2),
+                "coordinates": o_geom,
                 "waypoints": original_coords
             },
-            "optimized": { 
-                "distance_km": round(opt_dist, 2), 
-                "actual_road_distance_km": round(opt_dist, 2),
-                "driving_time_minutes": round(opt_duration, 2),
-                "traffic_delay_factor": round(traffic_delay_factor, 2),
-                "carbon_kg": round(opt_carbon, 2),
-                "coordinates": opt_geom,
-                "waypoints": opt_coords
-            },
+            "options": results,
+            "optimized": results['fastest'], # Backwards compatibility
             "savings": {
-                "distance_percent": round(((orig_dist - opt_dist) / orig_dist) * 100, 1) if orig_dist > 0 else 0,
-                "carbon_percent": round(((orig_carbon - opt_carbon) / orig_carbon) * 100, 1) if orig_carbon > 0 else 0,
-                "time_percent": round(((orig_duration - opt_duration) / orig_duration) * 100, 1) if orig_duration > 0 else 0
+                "distance_percent": round(((o_dist - f_dist) / o_dist) * 100, 1) if o_dist > 0 else 0,
+                "carbon_percent": round(((o_co2 - f_co2) / o_co2) * 100, 1) if o_co2 > 0 else 0,
+                "time_percent": round(((o_dur - f_dur) / o_dur) * 100, 1) if o_dur > 0 else 0
             }
         }), 200
 

@@ -80,7 +80,11 @@ const translations = {
 
 interface RouteData {
     original: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
-    optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
+    optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string }[] };
+    options?: {
+        fastest: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string }[] };
+        eco?: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string }[] };
+    };
     savings: { distance_percent: number; carbon_percent: number };
 }
 
@@ -139,6 +143,9 @@ export default function Home() {
     const updateStop = useCallback((index: number, newAddress: string) => { setStops(prev => prev.map((item, i) => (i === index ? newAddress : item))); }, []);
     const removeStop = useCallback((index: number) => { setStops(prev => prev.filter((_, i) => i !== index)); }, []);
 
+    const [selectedOption, setSelectedOption] = useState<'fastest' | 'eco'>('fastest');
+    const [startTime, setStartTime] = useState(new Date().toTimeString().slice(0, 5)); // HH:MM
+
     const optimizeRoute = useCallback(async () => {
         setIsLoading(true);
         setOptimizationMetrics(null);
@@ -148,7 +155,7 @@ export default function Home() {
             const response = await fetch('/api/v1/routes/optimize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ origin, destination, stops })
+                body: JSON.stringify({ origin, destination, stops, start_time: startTime })
             });
 
             if (!response.ok) throw new Error('Failed to connect to API Gateway');
@@ -156,18 +163,23 @@ export default function Home() {
             const data: RouteData = await response.json();
             setOptimizationMetrics(data);
 
+            // Default to fastest, but if eco exists and is different, user can switch
+            setSelectedOption('fastest');
+
         } catch (error) {
             console.error('Optimization failed:', error);
             setErrorMsg(t.engineUnavailable);
         } finally {
             setIsLoading(false);
         }
-    }, [origin, destination, stops, t.engineUnavailable]);
+    }, [origin, destination, stops, startTime, t.engineUnavailable]);
 
     const isRouteValid = useMemo(() => {
         const requiredFields = [origin, destination];
         return requiredFields.every(f => f.trim() !== '');
     }, [origin, destination]);
+
+    const currentMetrics = optimizationMetrics?.options?.[selectedOption] || optimizationMetrics?.optimized;
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
@@ -200,6 +212,16 @@ export default function Home() {
                     </h2>
 
                     <div className="space-y-4">
+                        <div className="flex flex-col space-y-1">
+                            <label className="text-sm font-semibold text-gray-600">Start Time</label>
+                            <input
+                                type="time"
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                                className="p-3 bg-white/70 border rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                            />
+                        </div>
+
                         <RouteInput
                             label={t.origin}
                             value={origin}
@@ -245,9 +267,9 @@ export default function Home() {
                     <div className="bg-white h-96 w-full rounded-2xl shadow-2xl mb-8 border-4 border-white overflow-hidden relative z-0">
                         <MapComponent
                             originalCoords={optimizationMetrics?.original.coordinates}
-                            optimizedCoords={optimizationMetrics?.optimized.coordinates}
+                            optimizedCoords={currentMetrics?.coordinates}
                             originalWaypoints={optimizationMetrics?.original.waypoints}
-                            optimizedWaypoints={optimizationMetrics?.optimized.waypoints}
+                            optimizedWaypoints={currentMetrics?.waypoints}
                         />
                     </div>
 
@@ -258,18 +280,59 @@ export default function Home() {
                         </div>
                     )}
 
-                    {optimizationMetrics && (
+                    {optimizationMetrics && currentMetrics && (
                         <div className="p-8 bg-white rounded-2xl shadow-2xl border-t-4 border-emerald-500 animation-fade-in">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-3 flex items-center space-x-2">
-                                <CheckCircle className="w-6 h-6 text-emerald-500" />
-                                <span>{t.success}</span>
-                            </h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div className="flex justify-between items-center mb-6 border-b pb-3">
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center space-x-2">
+                                    <CheckCircle className="w-6 h-6 text-emerald-500" />
+                                    <span>{t.success}</span>
+                                </h2>
+
+                                {optimizationMetrics.options?.eco && (
+                                    <div className="flex space-x-2 bg-slate-100 p-1 rounded-lg">
+                                        <button
+                                            onClick={() => setSelectedOption('fastest')}
+                                            className={`px-4 py-2 rounded-md text-sm font-bold transition ${selectedOption === 'fastest' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        >
+                                            Fastest
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedOption('eco')}
+                                            className={`px-4 py-2 rounded-md text-sm font-bold transition ${selectedOption === 'eco' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        >
+                                            Eco-Friendly
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                                 <MetricCard value={optimizationMetrics.savings.distance_percent} label={t.distanceSaved} unit="%" color="text-emerald-600" />
                                 <MetricCard value={optimizationMetrics.savings.carbon_percent} label={t.carbonReduction} unit="%" color="text-emerald-600" />
-                                <MetricCard value={optimizationMetrics.optimized.distance_km} label={t.totalDistance} unit=" km" color="text-slate-700" />
-                                <MetricCard value={optimizationMetrics.optimized.carbon_kg} label={t.carbonFootprint} unit=" kg" color="text-slate-700" />
+                                <MetricCard value={currentMetrics.distance_km} label={t.totalDistance} unit=" km" color="text-slate-700" />
+                                <MetricCard value={currentMetrics.carbon_kg} label={t.carbonFootprint} unit=" kg" color="text-slate-700" />
                             </div>
+
+                            {currentMetrics.etas && (
+                                <div className="mt-6">
+                                    <h3 className="text-lg font-bold text-gray-800 mb-4">Delivery Schedule</h3>
+                                    <div className="space-y-3">
+                                        {currentMetrics.etas.map((eta: any, i: number) => (
+                                            <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                                        {i === 0 ? 'S' : i === currentMetrics.etas.length - 1 ? 'E' : i}
+                                                    </div>
+                                                    <span className="font-medium text-gray-700">{eta.address}</span>
+                                                </div>
+                                                <div className="font-mono font-bold text-emerald-600 bg-white px-3 py-1 rounded border border-emerald-100">
+                                                    {eta.time}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
