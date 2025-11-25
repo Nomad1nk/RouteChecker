@@ -144,7 +144,7 @@ export default function Home() {
     const removeStop = useCallback((index: number) => { setStops(prev => prev.filter((_, i) => i !== index)); }, []);
 
     const [selectedOption, setSelectedOption] = useState<'fastest' | 'eco'>('fastest');
-    const [startTime, setStartTime] = useState(new Date().toTimeString().slice(0, 5)); // HH:MM
+
 
     const optimizeRoute = useCallback(async () => {
         setIsLoading(true);
@@ -152,10 +152,11 @@ export default function Home() {
         setErrorMsg(null);
 
         try {
+            const currentStartTime = new Date().toTimeString().slice(0, 5);
             const response = await fetch('/api/v1/routes/optimize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ origin, destination, stops, start_time: startTime })
+                body: JSON.stringify({ origin, destination, stops, start_time: currentStartTime })
             });
 
             if (!response.ok) throw new Error('Failed to connect to API Gateway');
@@ -172,7 +173,7 @@ export default function Home() {
         } finally {
             setIsLoading(false);
         }
-    }, [origin, destination, stops, startTime, t.engineUnavailable]);
+    }, [origin, destination, stops, t.engineUnavailable]);
 
     const isRouteValid = useMemo(() => {
         const requiredFields = [origin, destination];
@@ -212,15 +213,7 @@ export default function Home() {
                     </h2>
 
                     <div className="space-y-4">
-                        <div className="flex flex-col space-y-1">
-                            <label className="text-sm font-semibold text-gray-600">Start Time</label>
-                            <input
-                                type="time"
-                                value={startTime}
-                                onChange={(e) => setStartTime(e.target.value)}
-                                className="p-3 bg-white/70 border rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                            />
-                        </div>
+
 
                         <RouteInput
                             label={t.origin}
