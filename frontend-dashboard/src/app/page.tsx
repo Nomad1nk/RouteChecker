@@ -145,7 +145,7 @@ export default function Home() {
         setErrorMsg(null);
 
         try {
-            const response = await fetch('http://localhost:3000/api/v1/routes/optimize', {
+            const response = await fetch('/api/v1/routes/optimize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ origin, destination, stops })

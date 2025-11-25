@@ -116,6 +116,7 @@ def health_check():
     return jsonify({"status": "healthy", "service": "eco-route-optimizer"}), 200
 
 @app.route('/optimize', methods=['POST'])
+@app.route('/api/v1/routes/optimize', methods=['POST'])
 def optimize_route():
     global route_cache
     route_cache = {}
