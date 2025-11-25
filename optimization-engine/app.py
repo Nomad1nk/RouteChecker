@@ -166,17 +166,36 @@ def optimize_route():
         def calculate_etas(waypoints, start_dt):
             etas = []
             current_dt = start_dt
-            etas.append({"address": "Origin", "time": current_dt.strftime("%H:%M")})
+            cumulative_minutes = 0
+            
+            etas.append({
+                "address": "Origin", 
+                "time": current_dt.strftime("%H:%M"),
+                "total_time": "0 min"
+            })
             
             for i in range(len(waypoints) - 1):
                 # Get duration for this segment
                 _, seg_duration, _ = get_osrm_route(waypoints[i], waypoints[i+1])
+                
                 # Add driving time + 15 mins service time per stop (except last)
                 travel_time = timedelta(minutes=seg_duration)
-                service_time = timedelta(minutes=15) if i < len(waypoints) - 2 else timedelta(0)
+                service_time_minutes = 15 if i < len(waypoints) - 2 else 0
+                service_time = timedelta(minutes=service_time_minutes)
                 
                 current_dt += travel_time + service_time
-                etas.append({"address": f"Stop {i+1}" if i < len(waypoints)-2 else "Destination", "time": current_dt.strftime("%H:%M")})
+                cumulative_minutes += seg_duration + service_time_minutes
+                
+                # Format cumulative time
+                hours = int(cumulative_minutes // 60)
+                mins = int(cumulative_minutes % 60)
+                time_str = f"{hours}h {mins}m" if hours > 0 else f"{mins} min"
+                
+                etas.append({
+                    "address": f"Stop {i+1}" if i < len(waypoints)-2 else "Destination", 
+                    "time": current_dt.strftime("%H:%M"),
+                    "total_time": time_str
+                })
             return etas
 
         # --- Solve TSP for Multiple Objectives ---

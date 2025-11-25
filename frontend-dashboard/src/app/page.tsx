@@ -80,10 +80,10 @@ const translations = {
 
 interface RouteData {
     original: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][] };
-    optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string }[] };
+    optimized: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
     options?: {
-        fastest: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string }[] };
-        eco?: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string }[] };
+        fastest: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
+        eco?: { distance_km: number; carbon_kg: number; coordinates: [number, number][]; waypoints: [number, number][]; etas?: { address: string; time: string; total_time?: string }[] };
     };
     savings: { distance_percent: number; carbon_percent: number };
 }
@@ -318,8 +318,15 @@ export default function Home() {
                                                     </div>
                                                     <span className="font-medium text-gray-700">{eta.address}</span>
                                                 </div>
-                                                <div className="font-mono font-bold text-emerald-600 bg-white px-3 py-1 rounded border border-emerald-100">
-                                                    {eta.time}
+                                                <div className="flex items-center space-x-2">
+                                                    <div className="font-mono font-bold text-emerald-600 bg-white px-3 py-1 rounded border border-emerald-100">
+                                                        {eta.time}
+                                                    </div>
+                                                    {eta.total_time && (
+                                                        <span className="text-xs text-gray-400 font-medium">
+                                                            (+{eta.total_time})
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
