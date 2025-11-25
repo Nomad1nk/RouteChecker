@@ -321,7 +321,7 @@ export default function Home() {
                                             <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                                                 <div className="flex items-center space-x-3">
                                                     <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
-                                                        {i === 0 ? 'S' : i === currentMetrics.etas.length - 1 ? 'E' : i}
+                                                        {i === 0 ? 'S' : i === (currentMetrics.etas?.length ?? 0) - 1 ? 'E' : i}
                                                     </div>
                                                     <span className="font-medium text-gray-700">{eta.address}</span>
                                                 </div>
