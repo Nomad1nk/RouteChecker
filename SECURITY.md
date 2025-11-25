@@ -17,7 +17,7 @@ We take the security of our systems seriously. If you believe you have found a s
 
 ### How to Report
 
-Please send an email to the project maintainer (nomad@example.com) with the subject line "Vulnerability Report - EcoRoute Optimizer".
+Please send an email to the project maintainer (nomad2nk@yahoo.com) with the subject line "Vulnerability Report - EcoRoute Optimizer".
 
 In your report, please include:
 

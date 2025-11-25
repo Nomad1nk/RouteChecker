@@ -56,11 +56,7 @@ EcoRoute Optimizer is a comprehensive solution designed to optimize logistics ro
     rails server
     ```
 
-## 📖 Documentation
 
--   [Business Plan](./business_plan.md)
--   [Security Policy](./SECURITY.md)
--   [Contributing Guidelines](./CONTRIBUTING.md)
 
 ## 🛠 Tech Stack
 
